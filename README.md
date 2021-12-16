@@ -8,9 +8,13 @@ two csv files, named test_gpu.csv and test_mem.csv will be generated, and will b
 
 An example can be found in example.cpp
 
-# build example
-nvcc -o example example.cpp device.cpp system.cpp profiler.cpp -lnvidia-ml -lcublas  -lcurand
+# Example
+
+Building and running:
+
+    $ nvcc -o example example.cpp device.cpp system.cpp profiler.cpp -lnvidia-ml -lcublas  -lcurand
+    $ ./example
 
 Alternatively:
-$ make
-$ run.sh
+    $ make
+    $ run.sh
