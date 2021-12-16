@@ -11,3 +11,6 @@ An example can be found in example.cpp
 # build example
 nvcc -o example example.cpp device.cpp system.cpp profiler.cpp -lnvidia-ml -lcublas  -lcurand
 
+Alternatively:
+$ make
+$ run.sh
