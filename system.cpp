@@ -28,10 +28,10 @@ void GPUSystem::start() {
         for (int i = 0; i < num_devices; i++) {
             devices[i]->query();
             // print for debug
-            nvmlUtilization_t u = devices[i]->get_utilization();
-            std::cout << "Device " << i 
-                      << ": GPU utilization: " << u.gpu 
-                      << ", MEM Utilization: " << u.memory << "\n";
+            //nvmlUtilization_t u = devices[i]->get_utilization();
+            //std::cout << "Device " << i 
+            //          << ": GPU utilization: " << u.gpu 
+            //          << ", MEM Utilization: " << u.memory << "\n";
         }
         std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
     }
