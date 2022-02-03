@@ -1,16 +1,73 @@
 #include <fstream>
+#include <assert.h>
 #include "system.h"
 
+// FIXME don't assert in library
+
 GPUSystem::GPUSystem(std::string filename): fname(filename), loop(false) {
+    unsigned int num_gpus;
+
     NVML_RT_CALL(nvmlInit());
 
-    // Query the num of devices 
-    NVML_RT_CALL(nvmlDeviceGetCount(&num_devices));
+    // Query the number of GPUs.
+    NVML_RT_CALL(nvmlDeviceGetCount(&num_gpus));
 
-    // for each device create and GPUDevice object
-    for (int i = 0; i < num_devices; i++) {
-        devices.push_back(new GPUDevice(i));
+    // for each mig device across all GPUs, create a GPUDevice object
+    for (int i = 0; i < num_gpus; i++) {
+
+        int device_id = i;
+        int device_name_length = 64;
+        char name[device_name_length]; // device name
+        nvmlReturn_t rc;
+        unsigned int current_mode;
+        unsigned int pending_mode;
+        unsigned int max_mig_device_count;
+        int mig_idx = 0;
+
+        nvmlDevice_t device; // device handle
+        NVML_RT_CALL(nvmlDeviceGetHandleByIndex_v2(device_id, &device));
+        NVML_RT_CALL(nvmlDeviceGetName(device, name, device_name_length));
+        std::cout << "Device " << device_id << "(" << device << ") : " << name << "\n";
+
+        rc = nvmlDeviceGetMigMode(device, &current_mode, &pending_mode);
+        assert(rc == NVML_SUCCESS);
+        assert(current_mode == NVML_DEVICE_MIG_ENABLE);
+
+        rc = nvmlDeviceGetMaxMigDeviceCount(device, &max_mig_device_count);
+        assert(rc == NVML_SUCCESS);
+        std::cout << "  max mig device count: " << max_mig_device_count << "\n";
+
+        while (mig_idx < max_mig_device_count) {
+            nvmlDevice_t mig_device;
+            unsigned int is_mig_device;
+            rc = nvmlDeviceGetMigDeviceHandleByIndex(device, mig_idx, &mig_device);
+            if (rc != NVML_SUCCESS) {
+                // Case: I assume this happens when we fail to get the mig
+                // device at some index beyond the valid index, but before
+                // the max device count. I'm not sure why there is no API call
+                // for the number of mig devices. I only see a call for the max
+                // number. For the 4xA30s exercise on quorra1, this condition
+                // doesn't seem to get hit (I guess because we use the max
+                // number of slices).
+                break;
+            }
+            assert(rc == NVML_SUCCESS);
+
+            rc = nvmlDeviceIsMigDeviceHandle(mig_device, &is_mig_device); // sanity check
+            assert(rc == NVML_SUCCESS);
+            assert(is_mig_device == 1);
+
+            std::cout << "  adding a mig device\n";
+            devices.push_back(new GPUDevice(mig_device));
+
+            mig_idx++;
+        }
+
+        std::cout << "  added " << mig_idx << " mig devices\n";
     }
+    std::cout << "total size of devices vector: " << devices.size() << "\n";
+    num_devices = devices.size();
+
 }
 
 GPUSystem::~GPUSystem() {
